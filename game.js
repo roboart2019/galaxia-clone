@@ -1,5 +1,4 @@
-// Galaxia Clone - Space Shooter Game
-// Canvas setup
+// Galaxia Clone - Space Shooter Game (Enhanced Graphics)
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -17,20 +16,21 @@ let game = {
 const player = {
     x: canvas.width / 2,
     y: canvas.height - 80,
-    width: 40,
-    height: 40,
-    speed: 5,
+    width: 50,
+    height: 60,
+    speed: 6,
     canShoot: true,
-    shootCooldown: 250,
+    shootCooldown: 200,
     lastShot: 0,
-    color: '#0ff'
+    invincible: false
 };
 
-// Arrays for game objects
+// Arrays
 let bullets = [];
 let enemies = [];
 let particles = [];
 let stars = [];
+let enemyBullets = [];
 
 // Input
 const keys = {};
@@ -38,22 +38,24 @@ const keys = {};
 // Initialize starfield background
 function initStars() {
     stars = [];
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 150; i++) {
         stars.push({
             x: Math.random() * canvas.width,
             y: Math.random() * canvas.height,
-            size: Math.random() * 2,
-            speed: Math.random() * 2 + 0.5
+            size: Math.random() * 2.5,
+            speed: Math.random() * 1.5 + 0.3,
+            alpha: Math.random() * 0.8 + 0.2
         });
     }
 }
 
-// Draw starfield
+// Draw starfield with twinkling
 function drawStars() {
-    ctx.fillStyle = '#fff';
     stars.forEach(star => {
+        ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
         ctx.fillRect(star.x, star.y, star.size, star.size);
         star.y += star.speed;
+        star.alpha = 0.5 + Math.sin(Date.now() * 0.003 + star.x) * 0.4;
         if (star.y > canvas.height) {
             star.y = 0;
             star.x = Math.random() * canvas.width;
@@ -61,13 +63,17 @@ function drawStars() {
     });
 }
 
-// Draw player
+// Draw player with glow and detail
 function drawPlayer() {
     ctx.save();
     ctx.translate(player.x, player.y);
     
-    // Ship body (triangle)
-    ctx.fillStyle = player.color;
+    // Glow
+    ctx.shadowColor = '#00ffff';
+    ctx.shadowBlur = 20;
+    
+    // Main body
+    ctx.fillStyle = player.invincible ? '#ff0' : '#00ffff';
     ctx.beginPath();
     ctx.moveTo(0, -player.height/2);
     ctx.lineTo(-player.width/2, player.height/2);
@@ -75,63 +81,125 @@ function drawPlayer() {
     ctx.closePath();
     ctx.fill();
     
-    // Engine glow
-    ctx.fillStyle = 'rgba(255, 100, 0, 0.8)';
+    // Cockpit
+    ctx.fillStyle = '#111';
     ctx.beginPath();
-    ctx.moveTo(-10, player.height/2);
-    ctx.lineTo(0, player.height/2 + 15);
-    ctx.lineTo(10, player.height/2);
+    ctx.arc(0, -5, 8, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Wing details
+    ctx.strokeStyle = '#0099cc';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-player.width/2 + 5, player.height/2 - 10);
+    ctx.lineTo(-player.width/2 + 15, player.height/2);
+    ctx.moveTo(player.width/2 - 5, player.height/2 - 10);
+    ctx.lineTo(player.width/2 - 15, player.height/2);
+    ctx.stroke();
+    
+    // Engine glow
+    ctx.shadowColor = '#ff6600';
+    ctx.shadowBlur = 30;
+    ctx.fillStyle = '#ff6600';
+    ctx.beginPath();
+    ctx.moveTo(-12, player.height/2);
+    ctx.lineTo(0, player.height/2 + 20 + Math.random() * 10);
+    ctx.lineTo(12, player.height/2);
     ctx.closePath();
     ctx.fill();
     
     ctx.restore();
 }
 
-// Draw bullets
+// Draw bullets with trail
 function drawBullets() {
-    ctx.fillStyle = '#0f0';
-    ctx.shadowColor = '#0f0';
-    ctx.shadowBlur = 5;
     bullets.forEach(bullet => {
-        ctx.fillRect(bullet.x - 2, bullet.y, 4, 12);
+        ctx.save();
+        ctx.fillStyle = '#00ff00';
+        ctx.shadowColor = '#00ff00';
+        ctx.shadowBlur = 8;
+        ctx.fillRect(bullet.x - 2, bullet.y, 4, 14);
+        ctx.restore();
     });
-    ctx.shadowBlur = 0;
 }
 
-// Draw enemies
+// Draw enemy bullets
+function drawEnemyBullets() {
+    enemyBullets.forEach(bullet => {
+        ctx.save();
+        ctx.fillStyle = '#ff0066';
+        ctx.shadowColor = '#ff0066';
+        ctx.shadowBlur = 6;
+        ctx.fillRect(bullet.x - 2, bullet.y, 4, 10);
+        ctx.restore();
+    });
+}
+
+// Draw enemies with more detail
 function drawEnemies() {
     enemies.forEach(enemy => {
         ctx.save();
         ctx.translate(enemy.x, enemy.y);
         
-        // Enemy ship (inverted triangle)
-        ctx.fillStyle = enemy.color || '#f00';
+        // Glow
+        ctx.shadowColor = enemy.color || '#ff3399';
+        ctx.shadowBlur = 15;
+        
+        // Body (hexagonal shape)
+        ctx.fillStyle = enemy.color || '#ff0066';
+        ctx.strokeStyle = '#ff66cc';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(0, enemy.height/2);
-        ctx.lineTo(-enemy.width/2, -enemy.height/2);
-        ctx.lineTo(enemy.width/2, -enemy.height/2);
+        for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i - Math.PI/2;
+            const x = Math.cos(angle) * enemy.size;
+            const y = Math.sin(angle) * enemy.size;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
         ctx.closePath();
         ctx.fill();
+        ctx.stroke();
         
-        // Inner detail
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.fillRect(-8, -10, 16, 8);
+        // Inner circle
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.beginPath();
+        ctx.arc(0, 0, enemy.size * 0.3, 0, Math.PI * 2);
+        ctx.fill();
         
         ctx.restore();
     });
 }
 
-// Draw explosions (particles)
+// Draw explosions with multiple particle types
 function drawParticles() {
     particles.forEach((p, index) => {
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = p.life;
-        ctx.fillRect(p.x, p.y, p.size, p.size);
-        ctx.globalAlpha = 1;
+        ctx.save();
+        ctx.translate(p.x, p.y);
         
+        // Color and glow
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 10;
+        ctx.globalAlpha = p.life;
+        
+        if (p.type === 'spark') {
+            ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+        } else if (p.type === 'orb') {
+            ctx.beginPath();
+            ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+        }
+        
+        ctx.restore();
+        
+        // Update
         p.x += p.vx;
         p.y += p.vy;
-        p.life -= 0.02;
+        p.life -= 0.015 + p.decay;
+        p.size *= 0.97;
         
         if (p.life <= 0) {
             particles.splice(index, 1);
@@ -148,43 +216,81 @@ function shoot() {
             y: player.y - player.height/2,
             width: 4,
             height: 12,
-            speed: 10
+            speed: 12
         });
+        // Muzzle flash particle
+        createExplosion(player.x, player.y - player.height/2, '#00ff00', 3, 'spark');
         player.lastShot = now;
     }
 }
 
-// Spawn enemy
+// Spawn enemy with variation
 function spawnEnemy() {
-    const size = 30;
+    const size = 30 + Math.min(game.level * 2, 20);
+    const colors = ['#ff0066', '#ff3366', '#ff6666', '#ff99cc', '#cc66ff'];
     enemies.push({
         x: Math.random() * (canvas.width - size * 2) + size,
         y: -size,
         width: size,
         height: size,
-        speed: 1 + game.level * 0.2,
-        color: `hsl(${Math.random() * 60}, 100%, 50%)` // Red to yellow hues
+        speed: 0.8 + game.level * 0.15,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: size,
+        shootTimer: 0,
+        shootInterval: 2000 - Math.min(game.level * 100, 1500)
     });
 }
 
-// Create explosion
-function createExplosion(x, y, color = '#f80', count = 15) {
+// Enemy shooting (new!)
+function enemyShoot(enemy) {
+    enemyBullets.push({
+        x: enemy.x,
+        y: enemy.y + enemy.height/2,
+        width: 4,
+        height: 10,
+        speed: 4,
+        vx: (Math.random() - 0.5) * 2
+    });
+}
+
+// Create explosion with multiple particle types
+function createExplosion(x, y, color = '#ff8c00', count = 20, type = 'orb') {
     for (let i = 0; i < count; i++) {
+        const speed = Math.random() * 4 + 1;
+        const angle = Math.random() * Math.PI * 2;
         particles.push({
             x: x,
             y: y,
-            vx: (Math.random() - 0.5) * 6,
-            vy: (Math.random() - 0.5) * 6,
-            size: Math.random() * 4 + 2,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            size: Math.random() * 6 + 2,
             color: color,
-            life: 1
+            life: 1,
+            decay: Math.random() * 0.01 + 0.005,
+            type: type
+        });
+    }
+    // Add smaller sparks
+    for (let i = 0; i < 10; i++) {
+        const speed = Math.random() * 6 + 2;
+        const angle = Math.random() * Math.PI * 2;
+        particles.push({
+            x: x,
+            y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            size: Math.random() * 3 + 1,
+            color: '#ffffff',
+            life: 0.8,
+            decay: 0.02,
+            type: 'spark'
         });
     }
 }
 
 // Check collisions
 function checkCollisions() {
-    // Bullets vs Enemies
+    // Player bullets vs Enemies
     bullets.forEach((bullet, bi) => {
         enemies.forEach((enemy, ei) => {
             if (bullet.x > enemy.x - enemy.width/2 &&
@@ -192,8 +298,7 @@ function checkCollisions() {
                 bullet.y > enemy.y - enemy.height/2 &&
                 bullet.y < enemy.y + enemy.height/2) {
                 
-                // Hit!
-                createExplosion(enemy.x, enemy.y, enemy.color, 12);
+                createExplosion(enemy.x, enemy.y, enemy.color, 25);
                 enemies.splice(ei, 1);
                 bullets.splice(bi, 1);
                 game.score += 100;
@@ -202,18 +307,40 @@ function checkCollisions() {
         });
     });
     
+    // Enemy bullets vs Player
+    enemyBullets.forEach((bullet, bi) => {
+        if (Math.abs(bullet.x - player.x) < (player.width/2) &&
+            Math.abs(bullet.y - player.y) < (player.height/2)) {
+            enemyBullets.splice(bi, 1);
+            if (!player.invincible) {
+                createExplosion(player.x, player.y, '#ff0000', 30);
+                game.lives--;
+                updateUI();
+                if (game.lives <= 0) gameOver();
+                else {
+                    player.invincible = true;
+                    setTimeout(() => player.invincible = false, 2000);
+                }
+            }
+        }
+    });
+    
     // Enemies vs Player
     enemies.forEach((enemy, ei) => {
         if (Math.abs(enemy.x - player.x) < (enemy.width/2 + player.width/2) &&
             Math.abs(enemy.y - player.y) < (enemy.height/2 + player.height/2)) {
             
-            createExplosion(enemy.x, enemy.y, '#f00', 20);
+            createExplosion(enemy.x, enemy.y, enemy.color, 25);
             enemies.splice(ei, 1);
-            game.lives--;
-            updateUI();
-            
-            if (game.lives <= 0) {
-                gameOver();
+            if (!player.invincible) {
+                createExplosion(player.x, player.y, '#ff0000', 30);
+                game.lives--;
+                updateUI();
+                if (game.lives <= 0) gameOver();
+                else {
+                    player.invincible = true;
+                    setTimeout(() => player.invincible = false, 2000);
+                }
             }
         }
     });
@@ -229,8 +356,8 @@ function updateUI() {
 function gameLoop() {
     if (!game.running) return;
     
-    // Clear
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    // Clear with trail effect
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Draw stars
@@ -242,9 +369,26 @@ function gameLoop() {
         if (bullet.y < -bullet.height) bullets.splice(i, 1);
     });
     
+    // Move and draw enemy bullets
+    enemyBullets.forEach((bullet, i) => {
+        bullet.y += bullet.speed;
+        bullet.x += bullet.vx;
+        if (bullet.y > canvas.height + bullet.height) enemyBullets.splice(i, 1);
+    });
+    
     // Move and draw enemies
     enemies.forEach((enemy, i) => {
         enemy.y += enemy.speed;
+        
+        // Enemy shooting (if level > 1)
+        if (game.level > 1) {
+            enemy.shootTimer += 16;
+            if (enemy.shootTimer > enemy.shootInterval) {
+                enemyShoot(enemy);
+                enemy.shootTimer = 0;
+            }
+        }
+        
         if (enemy.y > canvas.height + enemy.height) {
             enemies.splice(i, 1);
             game.lives--;
@@ -270,16 +414,23 @@ function gameLoop() {
     // Draw everything
     drawPlayer();
     drawBullets();
+    drawEnemyBullets();
     drawEnemies();
     drawParticles();
     
     // Spawn enemies
-    if (Math.random() < 0.02 + game.level * 0.005) {
+    if (Math.random() < 0.015 + game.level * 0.003) {
         spawnEnemy();
     }
     
     // Level up every 1000 points
-    game.level = Math.floor(game.score / 1000) + 1;
+    const newLevel = Math.floor(game.score / 1000) + 1;
+    if (newLevel !== game.level) {
+        game.level = newLevel;
+        // Flash effect for level up
+        ctx.fillStyle = 'rgba(0, 255, 255, 0.3)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
     
     requestAnimationFrame(gameLoop);
 }
@@ -293,7 +444,9 @@ function startGame() {
     bullets = [];
     enemies = [];
     particles = [];
+    enemyBullets = [];
     player.x = canvas.width / 2;
+    player.invincible = false;
     
     initStars();
     updateUI();
