@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galaxia Clone</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="ui-overlay">
+            <div id="score">Score: 0</div>
+            <div id="lives">Lives: 3</div>
+        </div>
+        <div id="start-screen" class="screen">
+            <h1>GALAXIA</h1>
+            <p>Defend the galaxy from alien invaders!</p>
+            <button id="start-btn">START GAME</button>
+            <div class="controls">
+                <p>← → or A/D to move</p>
+                <p>SPACEBAR to shoot</p>
+            </div>
+        </div>
+        <div id="game-over-screen" class="screen" style="display:none;">
+            <h1>GAME OVER</h1>
+            <p id="final-score">Final Score: 0</p>
+            <button id="restart-btn">PLAY AGAIN</button>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
